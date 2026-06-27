@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id                      Int            @id @default(autoincrement())
+  name                    String         // الاسم واللقب كاملاً
+  department              String         // المصلحة أو القسم (مثال: الإدارة، الأشعة)
+  position                String         // الرتبة أو الوظيفة (مثال: تقني سامي)
+  isSpecialRole           Boolean        @default(false) // نعم إذا كان (راديو / ربو) لاستحقاق 21 يوم كل 6 أشهر
+  exceptionalLeaveBalance Int            @default(0)     // رصيد العطلة الاستثنائية التراكمية (التي لا تموت)
+  createdAt               DateTime       @default(now())
+  
+  // العلاقات
+  yearlyBalances          YearlyBalance[]
+  leaveRequests           LeaveRequest[]
+}
+
+// جدول أرصدة السنوات (لإدارة قاعدة العامين ونظام FIFO)
+model YearlyBalance {
+  id            Int      @id @default(autoincrement())
+  employeeId    Int
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  year          String   // اسم السنة المالية بصيغة نصية مثل: "25/26" أو "26/27"
+  daysGranted   Int      @default(50) // الأيام الممنوحة تلقائياً عند التدوير (50 يوم)
+  daysRemaining Int      // الأيام المتبقية في هذه السنة بالتحديد (تتناقص عند الاقتطاع)
+  createdAt     DateTime @default(now())
+
+  // ضمان عدم تكرار نفس السنة المالية لنفس الموظف
+  @@unique([employeeId, year])
+}
+
+// جدول سجلات طلبات العطل الممنوحة
+model LeaveRequest {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  // التواريخ
+  startDate   DateTime
+  endDate     DateTime
+  
+  // تفاصيل العطلة
+  daysTaken   Int
+  leaveType   String   // "annual", "exceptional", "special"
+  
+  // حقول إضافية لضمان "شمولية" السجل (Audit Log)
+  substitute  String?  // إضافة المستخلف هنا لجعل السجل كاملاً
+  notes       String?  // أي ملاحظات إضافية (مثلاً: سبب العطلة، رقم القرار)
+  status      String   @default("approved") // (مقترحة: 'pending', 'approved', 'rejected')
+  
+  createdAt   DateTime @default(now())
+}
