@@ -164,12 +164,6 @@ export async function getLeaveRequests() {
     // 2. تحويل وتجهيز البيانات لتطابق تصميم الواجهة
     const formattedRequests = requests.map((req) => {
       
-      // ترجمة نوع العطلة من الإنجليزية للعربية
-      let typeArabic = "عطلة";
-      if (req.leaveType === "annual") typeArabic = "سنوية";
-      else if (req.leaveType === "exceptional") typeArabic = "إستثنائية";
-      else if (req.leaveType === "special") typeArabic = "خاصة";
-
       const remaining = req.employee.yearlyBalances
       .map(
         (balance) =>
@@ -184,18 +178,18 @@ export async function getLeaveRequests() {
         year: new Date(req.createdAt).getFullYear().toString(),
         
         // بيانات الموظف (تأكد أن هذه الحقول موجودة في جدول Employee الخاص بك)
-        name: req.employee?.name || "غير محدد",
-        position: req.employee?.position || "غير محدد",
-        department: req.employee?.department || "غير محدد",
-        substitute: req.substitute || "لا يوجد",
+        name: req.employee?.name || "indéfini",
+        position: req.employee?.position || "indéfini",
+        department: req.employee?.department || "indéfini",
+        substitute: req.substitute || "/",
         notes: req.notes || "",
         // حقول غير موجودة في الداتابيز (نتركها فارغة ليكتبها المدير بيده على الشاشة)
         
         remaining,
         
-        typeText: typeArabic,
+        typeText: req.leaveType,
         duration: req.daysTaken,
-        durationText: `${req.daysTaken} أيام`, // يمكن برمجتها لاحقاً لتحويل الرقم لحروف
+        durationText: `${req.daysTaken} jour (s)`, // يمكن برمجتها لاحقاً لتحويل الرقم لحروف
         
         // تنسيق التواريخ لتظهر بشكل YYYY/MM/DD
         startDate: new Date(req.startDate).toLocaleDateString('en-GB').replace(/\//g, '/'),

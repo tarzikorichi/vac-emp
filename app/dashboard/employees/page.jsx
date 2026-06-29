@@ -16,7 +16,7 @@ export default function EmployeesRegister() {
   const [selectedRoleType, setSelectedRoleType] = useState('');
 
   const filteredEmployees = employees.filter((emp) => {
-    console.log("Filtrage de l'employé :", emp.name, "avec le terme :", searchTerm, "et selectedDept :", selectedDept, "et selectedRoleType :", selectedRoleType);
+    
     const matchesName = emp.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDept = selectedDept === '' || emp.department === selectedDept;
 
@@ -37,7 +37,7 @@ export default function EmployeesRegister() {
         setEmployees(result.data); // Stockage des employés de SQLite dans l'état
       } else {
         showAlert.toastError(`Une erreur est survenue lors de la récupération des employés : ${result.error}`);
-        console.log("Error fetching employees:", result.error);
+        
       }
   }
 
@@ -65,7 +65,6 @@ export default function EmployeesRegister() {
           loadEmployees();
         } else {
           showAlert.toastError(`Une erreur est survenue lors de la modification : ${result.error}`);
-          console.log("Error updating employee:", result.error);
         }
       });
     } else {
@@ -75,7 +74,6 @@ export default function EmployeesRegister() {
           loadEmployees();
         } else {
           showAlert.toastError(`Une erreur est survenue lors de l'ajout : ${result.error}`);
-          console.log("Error adding employee:", result.error);
         }
       });
     }

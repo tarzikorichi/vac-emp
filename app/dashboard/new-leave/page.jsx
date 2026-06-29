@@ -91,7 +91,28 @@ export default function NewLeave() {
         return showAlert.toastError('Veuillez saisir la référence du rapport de la médecine du travail');
       }
 
-      const calculatedEndDate = getEndDate(specialLeave.startDate, 21);
+      // 🛠️ بداية منطق حساب التاريخ باستثناء الجمعة والسبت
+      let currentDate = new Date(specialLeave.startDate);
+      let workingDaysCount = 0;
+      const totalDaysNeeded = 21;
+
+      while (workingDaysCount < totalDaysNeeded) {
+        const dayOfWeek = currentDate.getDay(); // 0 = الأحد, 5 = الجمعة, 6 = السبت
+
+        // إذا كان اليوم الحالي ليس عطلة نهاية أسبوع (ليس جمعة 5 وليس سبت 6)
+        if (dayOfWeek !== 5 && dayOfWeek !== 6) {
+          workingDaysCount++; // احسبه كـ يوم عمل فعلي
+        }
+
+        // إذا لم نصل بعد إلى اليوم الـ 21، ننتقل بالرزنامة إلى اليوم التالي
+        if (workingDaysCount < totalDaysNeeded) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+
+      // تحويل تاريخ النهاية المحسوب إلى صيغة نصية نظيفة (YYYY-MM-DD) لتخزينه
+      const calculatedEndDate = currentDate.toISOString().split('T')[0];
+      // 🛑 نهاية منطق الحساب المحدث
 
       payload.startDate = specialLeave.startDate;
       payload.endDate = calculatedEndDate;
@@ -99,6 +120,21 @@ export default function NewLeave() {
       payload.leaveType = specialLeave.periodType;
       payload.notes = `Rapport Médecine du Travail : ${specialLeave.medicalReport}. ${specialLeave.notes || ''}`;
       payload.substitute = specialLeave.substitute; // تمرير اسم مستخلف العطلة الخاصة
+      // if (!specialLeave.startDate) {
+      //   return showAlert.toastError('Veuillez spécifier la date de début du congé spécial');
+      // }
+      // if (!specialLeave.medicalReport) {
+      //   return showAlert.toastError('Veuillez saisir la référence du rapport de la médecine du travail');
+      // }
+
+      // const calculatedEndDate = getEndDate(specialLeave.startDate, 21);
+
+      // payload.startDate = specialLeave.startDate;
+      // payload.endDate = calculatedEndDate;
+      // payload.daysTaken = 21;
+      // payload.leaveType = specialLeave.periodType;
+      // payload.notes = `Rapport Médecine du Travail : ${specialLeave.medicalReport}. ${specialLeave.notes || ''}`;
+      // payload.substitute = specialLeave.substitute; // تمرير اسم مستخلف العطلة الخاصة
     }
 
     setIsLoading(true);
@@ -209,164 +245,162 @@ export default function NewLeave() {
       {/* 2. Sélection de l'employé et carte d'information */}
       <div className="space-y-6">
 
-  {/* Search */}
-  <div className="rounded-3xl border border-slate-200 bg-white p-6">
+        {/* Search */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-6">
 
-    <label className="mb-3 block text-sm font-bold text-slate-700">
-      Rechercher un employé
-    </label>
+          <label className="mb-3 block text-sm font-bold text-slate-700">
+            Rechercher un employé
+          </label>
 
-    <div className="relative">
+          <div className="relative">
 
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.1a7.5 7.5 0 0115 0"
-        />
-      </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.1a7.5 7.5 0 0115 0"
+              />
+            </svg>
 
-      <select
-        value={selectedEmpId}
-        onChange={handleChangeEmployee}
-        className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 font-medium outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
-      >
-        <option value="">Choisir un employé</option>
+            <select
+              value={selectedEmpId}
+              onChange={handleChangeEmployee}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 font-medium outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+            >
+              <option value="">Choisir un employé</option>
 
-        {employeesMock.map((emp) => (
-          <option key={emp.id} value={emp.id}>
-            {emp.name}
-          </option>
-        ))}
-      </select>
-
-    </div>
-
-  </div>
-
-  {currentEmployee && (
-
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-
-      {/* Header */}
-
-      <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
-
-        <div className="flex items-center gap-5">
-
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 text-2xl font-black text-white shadow-lg">
-            {currentEmployee.name.charAt(0)}
-          </div>
-
-          <div>
-
-            <h2 className="text-2xl font-black text-slate-900">
-              {currentEmployee.name}
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              {currentEmployee.position}
-            </p>
-
-            <p className="font-semibold text-slate-700">
-              {currentEmployee.department}
-            </p>
+              {employeesMock.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
 
           </div>
 
         </div>
 
-        <span
-          className={`rounded-full px-5 py-2 text-sm font-bold ${
-            currentEmployee.isSpecialRole
-              ? "bg-amber-100 text-amber-700"
-              : "bg-blue-100 text-blue-700"
-          }`}
-        >
-          {currentEmployee.isSpecialRole
-            ? "Régime spécial"
-            : "Congés standards"}
-        </span>
+        {currentEmployee && (
+
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+
+            {/* Header */}
+
+            <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
+
+              <div className="flex items-center gap-5">
+
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 text-2xl font-black text-white shadow-lg">
+                  {currentEmployee.name.charAt(0)}
+                </div>
+
+                <div>
+
+                  <h2 className="text-2xl font-black text-slate-900">
+                    {currentEmployee.name}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {currentEmployee.position}
+                  </p>
+
+                  <p className="font-semibold text-slate-700">
+                    {currentEmployee.department}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <span
+                className={`rounded-full px-5 py-2 text-sm font-bold ${currentEmployee.isSpecialRole
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-blue-100 text-blue-700"
+                  }`}
+              >
+                {currentEmployee.isSpecialRole
+                  ? "Régime spécial"
+                  : "Congés standards"}
+              </span>
+
+            </div>
+
+            {/* Statistics */}
+
+            <div className="grid border-t border-slate-100 md:grid-cols-3">
+
+              <div className="p-8">
+
+                <p className="text-sm font-semibold text-slate-400">
+                  Congés annuels
+                </p>
+
+                <h3 className="mt-2 text-5xl font-black text-blue-600">
+                  {currentEmployee.annualDaysLastTwoYears}
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  jours consommés
+                </p>
+
+              </div>
+
+              <div className="border-l border-r border-slate-100 p-8">
+
+                <p className="text-sm font-semibold text-slate-400">
+                  Congés Reconissance
+                </p>
+
+                <h3 className="mt-2 text-5xl font-black text-violet-600">
+                  {currentEmployee.exceptionalDaysOlder}
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  jours
+                </p>
+
+              </div>
+
+              <div className="p-8">
+
+                <p className="text-sm font-semibold text-slate-400">
+                  Régime
+                </p>
+
+                <h3
+                  className={`mt-4 text-2xl font-black ${currentEmployee.isSpecialRole
+                      ? "text-amber-600"
+                      : "text-blue-600"
+                    }`}
+                >
+                  {currentEmployee.isSpecialRole
+                    ? "Spécial"
+                    : "Standard"}
+                </h3>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        )}
 
       </div>
-
-      {/* Statistics */}
-
-      <div className="grid border-t border-slate-100 md:grid-cols-3">
-
-        <div className="p-8">
-
-          <p className="text-sm font-semibold text-slate-400">
-            Congés annuels
-          </p>
-
-          <h3 className="mt-2 text-5xl font-black text-blue-600">
-            {currentEmployee.annualDaysLastTwoYears}
-          </h3>
-
-          <p className="mt-2 text-sm text-slate-500">
-            jours consommés
-          </p>
-
-        </div>
-
-        <div className="border-l border-r border-slate-100 p-8">
-
-          <p className="text-sm font-semibold text-slate-400">
-            Congés exceptionnels
-          </p>
-
-          <h3 className="mt-2 text-5xl font-black text-violet-600">
-            {currentEmployee.exceptionalDaysOlder}
-          </h3>
-
-          <p className="mt-2 text-sm text-slate-500">
-            jours
-          </p>
-
-        </div>
-
-        <div className="p-8">
-
-          <p className="text-sm font-semibold text-slate-400">
-            Régime
-          </p>
-
-          <h3
-            className={`mt-4 text-2xl font-black ${
-              currentEmployee.isSpecialRole
-                ? "text-amber-600"
-                : "text-blue-600"
-            }`}
-          >
-            {currentEmployee.isSpecialRole
-              ? "Spécial"
-              : "Standard"}
-          </h3>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  )}
-
-</div>
       {/* 3. Sections des deux types de congés */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* ================= Côté Gauche : Congés Ordinaires ================= */}
         <div className={`bg-white rounded-2xl border p-6 transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${currentEmployee
-            ? 'border-blue-500 shadow-md ring-4 ring-blue-500/5'
-            : 'border-slate-200/80 shadow-xs opacity-60'
+          ? 'border-blue-500 shadow-md ring-4 ring-blue-500/5'
+          : 'border-slate-200/80 shadow-xs opacity-60'
           }`}>
           <form onSubmit={(e) => handleAddLeave(e, 'normal')} className="space-y-5 flex-1 flex flex-col justify-between">
             <div className="space-y-4">
@@ -387,8 +421,7 @@ export default function NewLeave() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none disabled:cursor-not-allowed"
                 >
                   <option value="annual">Congé annuel ordinaire</option>
-                  <option value="exceptional">Congé exceptionnel (urgence / familial)</option>
-                  <option value="sick">Congé maladie de courte durée</option>
+                  <option value="exceptional">Congé Reconissance</option>
                 </select>
               </div>
 
@@ -493,8 +526,8 @@ export default function NewLeave() {
 
         {/* ================= Côté Droit : Congés Spéciaux ================= */}
         <div className={`bg-white rounded-2xl border p-6 transition-all duration-300 relative overflow-hidden flex flex-col justify-between ${currentEmployee && currentEmployee.isSpecialRole
-            ? 'border-amber-500 shadow-md ring-4 ring-amber-500/5'
-            : 'border-slate-200/80 shadow-xs opacity-40 bg-slate-50/50'
+          ? 'border-amber-500 shadow-md ring-4 ring-amber-500/5'
+          : 'border-slate-200/80 shadow-xs opacity-40 bg-slate-50/50'
           }`}>
 
           {!currentEmployee?.isSpecialRole && currentEmployee && (
@@ -513,7 +546,7 @@ export default function NewLeave() {
                 <span className="text-xl">⚠️</span>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-800">2. Régime des Congés Spécifiques Spéciaux</h3>
-                  <p className="text-xxs text-slate-400 mt-0.5">Réservé exclusivement aux manipulateurs radio, imagerie et agents atteints d'asthme chronique</p>
+                  <p className="text-xxs text-slate-400 mt-0.5">Réservé exclusivement : Radiologie & Unité Contre la Tuberculose et les Maladies Respiratoires</p>
                 </div>
               </div>
 
@@ -526,7 +559,7 @@ export default function NewLeave() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none disabled:cursor-not-allowed"
                 >
                   <option value="6months">Session de 21 jours (Allouée tous les 6 mois)</option>
-                  <option value="exceptional_medical">Congé médical complémentaire exceptionnel</option>
+
                 </select>
               </div>
 

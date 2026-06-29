@@ -2,43 +2,67 @@
 
 import React, { useState, useEffect } from 'react';
 import { getLeaveAlerts, getDashboardStats, getActiveLeavesWithReturnDate } from '../actions/leave-request';
-
+import { CalendarDays } from 'lucide-react'
 export default function Dashboard() {
   // Données simulées traduites et adaptées
   const [stats, setStats] = useState({});
   const [alerts, setAlerts] = useState([]);
   const [activeLeaves, setActiveLeaves] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+const [statsLoading, setStatsLoading] = useState(false);
+const [alertsLoading, setAlertsLoading] = useState(false);
+const [leavesLoading, setLeavesLoading] = useState(false);
 
   async function fetchAlerts() {
+    setAlertsLoading(true)
     const result = await getLeaveAlerts();
     if (result.success) {
       setAlerts(result.data);
     }
-    console.log('Alertes critiques récupérées :', result.data);
+    setAlertsLoading(false)
   }
   async function loadStats() {
+    setStatsLoading(true)
     const result = await getDashboardStats();
     if (result.success) {
       setStats(result.data);
     }
+    setStatsLoading(false)
   }
   async function loadActiveLeaves() {
-    setIsLoading(true);
+    setLeavesLoading(true);
     const result = await getActiveLeavesWithReturnDate();
     if (result.success) {
       setActiveLeaves(result.data);
     }
-    setIsLoading(false);
+    setLeavesLoading(false);
   }
+
   useEffect(() => {
-    fetchAlerts();
-    loadStats();
-    loadActiveLeaves();
+    fetchAlerts(),
+    loadStats(),
+    loadActiveLeaves()
   }, []);
 
+  const GetDate = () => {
+    const date = new Date(); // Or pass a specific date: new Date('2026-06-27')
+    const formattedDate = new Intl.DateTimeFormat('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(date);
+    return formattedDate
+  }
 
-  if (isLoading) return <p className="text-sm p-5 text-slate-400 animate-pulse">Chargement البيانات...</p>;
+  const Actualiser = async() => {
+    await Promise.all([
+      fetchAlerts(),
+      loadStats(),
+      loadActiveLeaves()
+    ])
+  }
+
+  // if (isLoading) return <p className="text-sm p-5 text-slate-400 animate-pulse">Chargement البيانات...</p>;
   if (activeLeaves.length === 0) {
     return (
       <div className="text-center p-8 border border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-bold bg-slate-50">
@@ -90,7 +114,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-2 pt-2">
 
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                📅 27 Juin 2026
+                📅 <GetDate />
               </span>
 
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
@@ -129,11 +153,11 @@ export default function Dashboard() {
             {/* Actions */}
             <div className="flex gap-2 " >
 
-              <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md">
+              <button onClick={Actualiser} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md">
                 ⟳ Actualiser
               </button>
 
-              <button className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg">
+              <button className="rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg" disabled>
                 Exporter
               </button>
 
@@ -223,7 +247,7 @@ export default function Dashboard() {
       <section className="bg-white rounded-3xl border border-slate-200/50 shadow-[0_12px_40px_-15px_rgba(15,23,42,0.03)] overflow-hidden transition-shadow duration-300 hover:shadow-[0_16px_48px_-12px_rgba(15,23,42,0.05)]">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="space-y-0.5">
-            <h3 className="font-black text-slate-900 text-base tracking-tight">Situation Actuelle des Soldes par Année</h3>
+            <h3 className="font-black text-slate-900 text-base tracking-tight">{activeLeaves.length } Situation Actuelle des Soldes par Année</h3>
             <p className="text-xs text-slate-400 font-semibold">Détail des droits annuels (limite de 2 ans) et reliquats exceptionnels cumulés</p>
           </div>
           
@@ -260,7 +284,7 @@ export default function Dashboard() {
                   {/* تاريخ العودة الفعلي المحسوب تلقائياً */}
                   <td className="py-6 px-6 text-xs font-bold text-indigo-600 bg-indigo-50/30 group-hover:bg-indigo-50/60 transition-colors">
                     <span className="inline-flex items-center gap-1.5 capitalize">
-                      🗓️ {leave.returnDate}
+                      <CalendarDays /> {leave.returnDate}
                     </span>
                   </td>
 
