@@ -1,35 +1,38 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createEmployee, getAllEmployees, updateEmployee, deleteEmployee } from './../../actions/employee';
+import { createEmployee, getAllEmployees, updateEmployee, deleteEmployee, getUniqueDepartments } from './../../actions/employee';
 import { showAlert } from '../../utils/alert';
+import { useMemo } from 'react';
 
 export default function EmployeesRegister() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModalEditing, setIsModalEditing] = useState(false);
   const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
   // États pour la recherche et le filtrage
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedRoleType, setSelectedRoleType] = useState('');
 
-  const filteredEmployees = employees.filter((emp) => {
-    
-    const matchesName = emp.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedDept === '' || emp.department === selectedDept;
+  const filteredEmployees = useMemo(
+    () => {
+      return employees.filter((emp) => {
+        const matchesName = emp.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDept = selectedDept === '' || emp.department === selectedDept;
 
-    let matchesRole = true;
-    if (selectedRoleType === 'normal') {
-      matchesRole = !emp.isSpecialRole; 
-    } else if (selectedRoleType === 'special') {
-      matchesRole = emp.isSpecialRole; 
-    }
+        let matchesRole = true;
+        if (selectedRoleType === 'normal') {
+          matchesRole = !emp.isSpecialRole; 
+        } else if (selectedRoleType === 'special') {
+          matchesRole = emp.isSpecialRole; 
+        }
 
-    // Toutes les conditions doivent être remplies pour afficher l'employé
-    return matchesName && matchesDept && matchesRole;
-  });
+        return matchesName && matchesDept && matchesRole;
+    });
+    }, [employees, searchTerm, selectedDept, selectedRoleType]) 
 
   async function loadEmployees() {
       const result = await getAllEmployees();
@@ -37,8 +40,10 @@ export default function EmployeesRegister() {
         setEmployees(result.data); // Stockage des employés de SQLite dans l'état
       } else {
         showAlert.toastError(`Une erreur est survenue lors de la récupération des employés : ${result.error}`);
-        
       }
+
+      const res = await getUniqueDepartments()
+      setDepartments(res)
   }
 
   useEffect(() => {
@@ -163,9 +168,11 @@ export default function EmployeesRegister() {
             className="w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border border-slate-200 text-slate-700 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:outline-none transition-all shadow-2xs appearance-none cursor-pointer font-medium"
           >
             <option value="">Tous les services et départements</option>
-            <option value="Administration Générale">Administration Générale</option>
-            <option value="Service de Radiologie">Radiologie & Analyses</option>
-            <option value="Service des Urgences">Urgences</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
           </select>
           <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[10px] opacity-70">▼</span>
         </div>

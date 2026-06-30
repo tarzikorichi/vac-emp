@@ -90,7 +90,7 @@ export async function getAllEmployeesForLeaveRegistration() {
     const employeesRaw = await prisma.employee.findMany({
       include: {
         yearlyBalances: true, // ضرورية جداً لحساب الأرصدة
-        // leaveRequests: true // قد لا نحتاجها في هذه الصفحة حالياً
+        leaveRequests: true // قد لا نحتاجها في هذه الصفحة حالياً
       },
       orderBy: { id: 'desc' }
     });
@@ -185,6 +185,21 @@ export async function getEmployeesHistoricalBalances() {
   }
 }
 
+
+export async function getUniqueDepartments() {
+  const result = await prisma.employee.groupBy({
+    by: ['department'],
+    _count: {
+      department: true,
+    },
+    orderBy: {
+      department: 'asc', // Keeps them alphabetically sorted for your select dropdown
+    },
+  });
+
+  // Map it to return a clean string array: ['Administration', 'Radiologie', ...]
+  return result.map(item => item.department);
+}
 
 // when click on +/- 
 export async function updateEmployeeYearlyBalance(employeeId, yearKey, newDays) {

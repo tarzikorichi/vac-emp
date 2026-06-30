@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, } from 'react';
 import { getAllEmployeesForLeaveRegistration, runHistoricalMigration } from './../../actions/employee';
 import { createLeaveRequest } from './../../actions/leave-request';
 import { showAlert } from '../../utils/alert';
@@ -14,6 +14,13 @@ export default function NewLeave() {
   const [specialLeave, setSpecialLeave] = useState({ periodType: '6months', startDate: '', medicalReport: '', notes: '', substitute: '' });
   const [employeesMock, setEmployeesMock] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const containerRef = useRef(null);
+
+  const selectedEmployee = useMemo(() => {
+    return employeesMock.find(emp => String(emp.id) === String(selectedEmpId));
+  }, [selectedEmpId, employeesMock]);
 
   async function loadEmployees() {
     const result = await getAllEmployeesForLeaveRegistration();
@@ -26,9 +33,63 @@ export default function NewLeave() {
 
   useEffect(() => {
     loadEmployees();
+
   }, []);
 
+  useEffect(() => {
+    if (selectedEmployee) {
+      setSearchQuery(selectedEmployee.name);
+    } else {
+      setSearchQuery('');
+    }
+  }, [selectedEmployee])
+
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery || (selectedEmployee && searchQuery === selectedEmployee.name)) {
+      return employeesMock;
+    }
+    return employeesMock.filter((emp) =>
+      emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      emp.department?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, employeesMock, selectedEmployee]);
+
+  const handleSelect = (emp) => {
+    setSelectedEmpId(emp.id); // Triggers your parent handler logic
+    setSearchQuery(emp.name);
+    setIsOpen(false);
+    handleChangeEmployee(emp.id)
+  };
+
+  const handleClear = () => {
+    setSelectedEmpId('');
+    setSearchQuery('');
+    setIsOpen(true);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        // Reset query to selected name if they click away without picking
+        setSearchQuery(selectedEmployee ? selectedEmployee.name : '');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedEmployee]);
+
   const currentEmployee = employeesMock.find(emp => emp.id === Number(selectedEmpId));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const activeLeave = currentEmployee?.leaveRequests?.find(request => {
+    if (request.status !== "approved") return false; // نتحقق فقط من العطل المقبولة
+    const startDate = new Date(request.startDate);
+    const endDate = new Date(request.endDate);
+    return today >= startDate && today <= endDate;
+  });
 
   // 📐 Fonction pour calculer la date de fin selon la date de début et le nombre de jours
   const getEndDate = (startDate, days) => {
@@ -61,6 +122,8 @@ export default function NewLeave() {
   // Gestionnaire unifié de dépôt des congés
   const handleAddLeave = async (e, category) => {
     e.preventDefault();
+    if (isLoading) return;
+    if (activeLeave) return showAlert.toastError('Opération impossible :d\ Cet employé est déjà en congé actuellement. Vous ne pouvez pas lui attribuer un nouveau congé pour le moment.');
     if (!selectedEmpId) return showAlert.toastError('Veuillez d\'abord sélectionner un employé');
 
     let payload = {
@@ -153,11 +216,10 @@ export default function NewLeave() {
     }
   };
 
-  const handleChangeEmployee = (e) => {
-    const empId = e.target.value;
-    setSelectedEmpId(empId);
+  const handleChangeEmployee = (id) => {
+    setSelectedEmpId(id);
 
-    if (empId) {
+    if (id) {
       const today = new Date().toISOString().split('T')[0];
       setNormalLeave(prev => ({ ...prev, startDate: today, endDate: '', substitute: '' }));
       setSpecialLeave(prev => ({ ...prev, startDate: today, medicalReport: '', notes: '', substitute: '' }));
@@ -245,18 +307,17 @@ export default function NewLeave() {
       {/* 2. Sélection de l'employé et carte d'information */}
       <div className="space-y-6">
 
-        {/* Search */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6">
-
           <label className="mb-3 block text-sm font-bold text-slate-700">
             Rechercher un employé
           </label>
 
-          <div className="relative">
-
+          {/* Main Container */}
+          <div className="relative" ref={containerRef}>
+            {/* User Icon */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 z-10 pointer-events-none"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -269,129 +330,197 @@ export default function NewLeave() {
               />
             </svg>
 
-            <select
-              value={selectedEmpId}
-              onChange={handleChangeEmployee}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 font-medium outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
-            >
-              <option value="">Choisir un employé</option>
+            {/* Input Text Field */}
+            <input
+              type="text"
+              placeholder="Tapez le nom d'un employé..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsOpen(true);
+              }}
+              onFocus={() => setIsOpen(true)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-10 font-medium outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100/50 text-slate-800 placeholder-slate-400"
+            />
 
-              {employeesMock.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name}
-                </option>
-              ))}
-            </select>
+            {/* Right Action Trigger Buttons (Chevron or Clear Cross) */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {searchQuery && (
+                <button
+                  onClick={handleClear}
+                  type="button"
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                >
+                  ✕
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={`p-1 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+              >
+                ▾
+              </button>
+            </div>
 
+            {/* Floating Filtered Results Box */}
+            {isOpen && (
+              <div className="absolute left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 scrollbar-thin">
+                {filteredEmployees.length === 0 ? (
+                  <div className="p-3 text-center text-sm text-slate-400 font-medium">
+                    Aucun employé trouvé
+                  </div>
+                ) : (
+                  filteredEmployees.map((emp) => {
+                    const isCurrent = String(emp.id) === String(selectedEmpId);
+                    return (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => handleSelect(emp)}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 my-0.5 rounded-xl text-left text-sm font-medium transition-all ${isCurrent
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-700 hover:bg-slate-50 active:bg-slate-100'
+                          }`}
+                      >
+                        <span>{emp.name}</span>
+                        {emp.department && (
+                          <span className={`text-xs uppercase tracking-wider px-2 py-0.5 rounded-md ${isCurrent ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                            {emp.department}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
-
         </div>
 
-        {currentEmployee && (
+        {currentEmployee && (() => {
 
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          let daysRemaining = 0;
+          if (activeLeave) {
+            const endDate = new Date(activeLeave.endDate);
+            const diffTime = endDate - today;
+            // حساب الأيام المتبقية مع إضافة يوم النهاية نفسه
+            daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          }
 
-            {/* Header */}
-
-            <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
-
-              <div className="flex items-center gap-5">
-
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 text-2xl font-black text-white shadow-lg">
-                  {currentEmployee.name.charAt(0)}
+          return (
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+              {/* Header */}
+              <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-5">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 text-2xl font-black text-white shadow-lg">
+                    {currentEmployee.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900">
+                      {currentEmployee.name}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {currentEmployee.position}
+                    </p>
+                    <p className="font-semibold text-slate-700">
+                      {currentEmployee.department}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-
-                  <h2 className="text-2xl font-black text-slate-900">
-                    {currentEmployee.name}
-                  </h2>
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    {currentEmployee.position}
-                  </p>
-
-                  <p className="font-semibold text-slate-700">
-                    {currentEmployee.department}
-                  </p>
-
-                </div>
-
-              </div>
-
-              <span
-                className={`rounded-full px-5 py-2 text-sm font-bold ${currentEmployee.isSpecialRole
+                <span
+                  className={`rounded-full px-5 py-2 text-sm font-bold ${currentEmployee.isSpecialRole
                     ? "bg-amber-100 text-amber-700"
                     : "bg-blue-100 text-blue-700"
-                  }`}
-              >
-                {currentEmployee.isSpecialRole
-                  ? "Régime spécial"
-                  : "Congés standards"}
-              </span>
-
-            </div>
-
-            {/* Statistics */}
-
-            <div className="grid border-t border-slate-100 md:grid-cols-3">
-
-              <div className="p-8">
-
-                <p className="text-sm font-semibold text-slate-400">
-                  Congés annuels
-                </p>
-
-                <h3 className="mt-2 text-5xl font-black text-blue-600">
-                  {currentEmployee.annualDaysLastTwoYears}
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  jours consommés
-                </p>
-
-              </div>
-
-              <div className="border-l border-r border-slate-100 p-8">
-
-                <p className="text-sm font-semibold text-slate-400">
-                  Congés Reconissance
-                </p>
-
-                <h3 className="mt-2 text-5xl font-black text-violet-600">
-                  {currentEmployee.exceptionalDaysOlder}
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  jours
-                </p>
-
-              </div>
-
-              <div className="p-8">
-
-                <p className="text-sm font-semibold text-slate-400">
-                  Régime
-                </p>
-
-                <h3
-                  className={`mt-4 text-2xl font-black ${currentEmployee.isSpecialRole
-                      ? "text-amber-600"
-                      : "text-blue-600"
                     }`}
                 >
-                  {currentEmployee.isSpecialRole
-                    ? "Spécial"
-                    : "Standard"}
-                </h3>
-
+                  {currentEmployee.isSpecialRole ? "Régime spécial" : "Congés standards"}
+                </span>
               </div>
 
+              {/* Statistics */}
+              {/* قمنا بتغيير التوزيع إلى 4 أعمدة بدلاً من 3 لاستيعاب بطاقة الحالة الحالية */}
+              <div className="grid border-t border-slate-100 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+
+                {/* Box 1: Congés annuels */}
+                <div className="p-8">
+                  <p className="text-sm font-semibold text-slate-400">
+                    Congés annuels
+                  </p>
+                  <h3 className="mt-2 text-5xl font-black text-blue-600">
+                    {currentEmployee.annualDaysLastTwoYears}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-500">
+                    jours consommés
+                  </p>
+                </div>
+
+                {/* Box 2: Congés Reconissance */}
+                <div className="p-8">
+                  <p className="text-sm font-semibold text-slate-400">
+                    Congés Reconnaissance
+                  </p>
+                  <h3 className="mt-2 text-5xl font-black text-violet-600">
+                    {currentEmployee.exceptionalDaysOlder}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-500">
+                    jours
+                  </p>
+                </div>
+
+                {/* Box 3: Régime */}
+                <div className="p-8">
+                  <p className="text-sm font-semibold text-slate-400">
+                    Régime
+                  </p>
+                  <h3
+                    className={`mt-4 text-2xl font-black ${currentEmployee.isSpecialRole ? "text-amber-600" : "text-blue-600"
+                      }`}
+                  >
+                    {currentEmployee.isSpecialRole ? "Spécial" : "Standard"}
+                  </h3>
+                </div>
+
+                {/* Box 4: الجديد - حالة التواجد الحالية وعمر العطلة المتبقي */}
+                <div className={`p-8 transition-all duration-300 ${activeLeave
+                  ? "bg-rose-600 text-white shadow-[inset_0_0_20px_rgba(0,0,0,0.02)]"
+                  : "bg-slate-50/50 text-slate-800"
+                  }`}>
+                  <p className={`text-sm font-semibold ${activeLeave ? "text-rose-100" : "text-slate-400"}`}>
+                    Statut Actuel
+                  </p>
+
+                  {activeLeave ? (
+                    <div className="mt-4 animate-[fadeIn_0.3s_ease-out]">
+                      <h3 className="text-3xl font-black flex items-center gap-2.5 tracking-tight text-white">
+                        <span className="h-3 w-3 rounded-full bg-white animate-ping absolute inline-flex"></span>
+                        <span className="h-3 w-3 rounded-full bg-white relative inline-flex"></span>
+                        En Congé
+                      </h3>
+
+                      <p className="mt-3 text-sm font-medium text-rose-100/90 bg-rose-700/40 border border-white/10 px-3 py-2 rounded-xl inline-block backdrop-blur-xs">
+                        Retour dans : <span className="text-base font-extrabold text-white">{daysRemaining} {daysRemaining > 1 ? 'jours' : 'jour'}</span>
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <h3 className="text-2xl font-black text-emerald-600 flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        Présent
+                      </h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Au poste de travail
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
-
-          </div>
-
-        )}
+          );
+        })()}
 
       </div>
       {/* 3. Sections des deux types de congés */}
