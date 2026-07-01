@@ -13,19 +13,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model Employee {
-  id                      Int            @id @default(autoincrement())
-  name                    String         // الاسم واللقب كاملاً
-  department              String         // المصلحة أو القسم (مثال: الإدارة، الأشعة)
-  position                String         // الرتبة أو الوظيفة (مثال: تقني سامي)
-  isSpecialRole           Boolean        @default(false) // نعم إذا كان (راديو / ربو) لاستحقاق 21 يوم كل 6 أشهر
-  exceptionalLeaveBalance Int            @default(0)     // رصيد العطلة الاستثنائية التراكمية (التي لا تموت)
-  createdAt               DateTime       @default(now())
-  
-  // العلاقات
+  id                      Int      @id @default(autoincrement())
+  name                    String
+  department              String
+  position                String
+  isSpecialRole           Boolean  @default(false)
+
+  // رصيد عطلة Reconnaissance الحالي
+  recognitionBalance      Int      @default(0)
+
+  createdAt               DateTime @default(now())
+
   yearlyBalances          YearlyBalance[]
   leaveRequests           LeaveRequest[]
+  recognitionHistory      RecognitionTransaction[]
 }
+
+
+model RecognitionTransaction {
+  id          Int      @id @default(autoincrement())
+
+  employeeId  Int
+  employee    Employee @relation(fields:[employeeId], references:[id], onDelete:Cascade)
+
+  amount      Int      // +5 أو +10 أو -3
+
+  reason      String?
+
+  createdAt   DateTime @default(now())
+}
+
 
 // جدول أرصدة السنوات (لإدارة قاعدة العامين ونظام FIFO)
 model YearlyBalance {

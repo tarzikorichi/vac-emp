@@ -47,7 +47,7 @@ export async function getAllEmployees() {
     console.error("فشل جلب الموظفين:", error);
     return { success: false, error: error.message };
   }
-}
+} 
 
 // 3. تعديل بيانات موظف حالي
 export async function updateEmployee(id, updateData) {
@@ -59,11 +59,28 @@ export async function updateEmployee(id, updateData) {
         department: updateData.department,
         position: updateData.position,
         isSpecialRole: updateData.isSpecialRole,
-        exceptionalLeaveBalance: parseInt(updateData.exceptionalLeaveBalance || 0)
+        recognitionBalance: parseInt(updateData.recognitionBalance || 0)
       }
     });
 
     revalidatePath('/dashboard/employees');
+    return { success: true, updated };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateEmployeeRecognitionBalance(id, recDays) {
+  console.log('ffffffffffffffffffff: ', id, recDays)
+  try {
+    const updated = await prisma.employee.update({
+      where: { id: parseInt(id) },
+      data: {
+        recognitionBalance: parseInt(recDays || 0)
+      }
+    });
+
+    revalidatePath('/dashboard/Reconnaissance');
     return { success: true, updated };
   } catch (error) {
     return { success: false, error: error.message };
@@ -108,20 +125,26 @@ export async function getAllEmployeesForLeaveRegistration() {
     const transformedEmployees = employeesRaw.map(emp => {
       
       // 📐 حساب: annualDaysLastTwoYears (مجموع الأيام المتبقية في آخر عامين محددين)
-      const annualDaysLastTwoYears = emp.yearlyBalances
-        .filter(balance => lastTwoYears.includes(balance.year)) // نأخذ السنتين الأخيرتين فقط
-        .reduce((sum, balance) => sum + balance.daysRemaining, 0); // نجمع الأيام المتبقية فيهما
+      // const annualDaysLastTwoYears = emp.yearlyBalances
+      //   .filter(balance => lastTwoYears.includes(balance.year)) // نأخذ السنتين الأخيرتين فقط
+      //   .reduce((sum, balance) => sum + balance.daysRemaining, 0); // نجمع الأيام المتبقية فيهما
 
-      // 📐 حساب: exceptionalDaysOlder (مجموع الأيام المتبقية في *أي سنة أخرى* أقدم)
-      const exceptionalDaysOlder = emp.yearlyBalances
-        .filter(balance => !lastTwoYears.includes(balance.year)) // نأخذ أي سنة ليست من العامين الأخيرين
-        .reduce((sum, balance) => sum + balance.daysRemaining, 0); // نجمع أيامها
+      // // 📐 حساب: exceptionalDaysOlder (مجموع الأيام المتبقية في *أي سنة أخرى* أقدم)
+      // const exceptionalDaysOlder = emp.yearlyBalances
+      //   .filter(balance => !lastTwoYears.includes(balance.year)) // نأخذ أي سنة ليست من العامين الأخيرين
+      //   .reduce((sum, balance) => sum + balance.daysRemaining, 0); // نجمع أيامها
+
+      const totalAnnualBalance = emp.yearlyBalances.reduce(
+        (sum, balance) => sum + balance.daysRemaining,
+        0
+      );
 
       // نعيد كائن الموظف الأصلي مع إضافة الحقول المحسوبة الجديدة
       return {
         ...emp,
-        annualDaysLastTwoYears, // 👈 هذا هو الحقل الذي تنتظره الواجهة في الـ col-span-2
-        exceptionalDaysOlder,   // 👈 وهذا أيضاً
+        totalAnnualBalance
+        // annualDaysLastTwoYears, // 👈 هذا هو الحقل الذي تنتظره الواجهة في الـ col-span-2
+        // exceptionalDaysOlder,   // 👈 وهذا أيضاً
       };
     });
 

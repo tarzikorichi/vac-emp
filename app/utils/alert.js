@@ -61,7 +61,7 @@ export const showAlert = {
       toast: true,
       position: 'bottom-start',
       showConfirmButton: false,
-      timer: 3000,
+      timer: 10000,
       timerProgressBar: true,
     });
   },

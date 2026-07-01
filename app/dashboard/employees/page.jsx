@@ -39,6 +39,7 @@ export default function EmployeesRegister() {
       if (result.success) {
         setEmployees(result.data); // Stockage des employés de SQLite dans l'état
       } else {
+        console.log(`Une erreur est survenue lors de la récupération des employés : ${result.error}`);
         showAlert.toastError(`Une erreur est survenue lors de la récupération des employés : ${result.error}`);
       }
 

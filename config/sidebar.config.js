@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, StickyNotePlus, UsersRound, Archive } from 'lucide-react';
+import { LayoutDashboard, StickyNotePlus, UsersRound, Archive, FileText, SquareDashedKanban } from 'lucide-react';
 
 export const navItems = [
   {
@@ -23,17 +23,23 @@ export const navItems = [
   {
     index: 4,
     href: "/dashboard/leave-requests",
-    title: "pdfs",
-    icon: <UsersRound className="w-5 h-5" />,
+    title: "Center d'imprision",
+    icon: <FileText className="w-5 h-5" />,
   },
   {
     index: 5,
     href: "/dashboard/balances",
-    title: "edit days",
-    icon: <UsersRound className="w-5 h-5" />,
+    title: "Gestion de congee",
+    icon: <SquareDashedKanban className="w-5 h-5" />,
   },
   {
     index: 6,
+    href: "/dashboard/Reconnaissance",
+    title: "Gestion de Reconnaissance",
+    icon: <SquareDashedKanban className="w-5 h-5" />,
+  },
+  {
+    index: 7,
     href: "/dashboard/reports",
     title: "Archives",
     icon: <Archive className="w-5 h-5" />,

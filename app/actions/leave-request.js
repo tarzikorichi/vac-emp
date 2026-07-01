@@ -56,11 +56,11 @@ export async function createLeaveRequest(leaveData) {
       }
     } 
     // ب) إذا كانت العطلة استثنائية (تقتطع من رصيد الطوارئ التراكمي الذي لا يموت)
-    else if (leaveType === 'exceptional') {
+    else if (leaveType === 'reconissance') {
       
       await tx.employee.update({
         where: { id: employeeId },
-        data: { exceptionalLeaveBalance: employee.exceptionalLeaveBalance - days }
+        data: { recognitionBalance: employee.recognitionBalance - days }
       });
     }
     // ج) إذا كانت عطلة خاصة (21 يوماً صحية للمشمولين بنظام الراديو/الربو)
@@ -126,7 +126,7 @@ export async function deleteLeaveRequest(requestId) {
     } else if (leave.leaveType === 'exceptional') {
       await tx.employee.update({
         where: { id: leave.employeeId },
-        data: { exceptionalLeaveBalance: { increment: leave.daysTaken } }
+        data: { recognitionBalance: { increment: leave.daysTaken } }
       });
     }
 

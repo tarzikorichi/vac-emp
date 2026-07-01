@@ -87,7 +87,9 @@ export default function NewLeave() {
   const activeLeave = currentEmployee?.leaveRequests?.find(request => {
     if (request.status !== "approved") return false; // نتحقق فقط من العطل المقبولة
     const startDate = new Date(request.startDate);
+    startDate.setHours(0,0,0,0);
     const endDate = new Date(request.endDate);
+    endDate.setHours(0,0,0,0);
     return today >= startDate && today <= endDate;
   });
 
@@ -450,7 +452,7 @@ export default function NewLeave() {
                     Congés annuels
                   </p>
                   <h3 className="mt-2 text-5xl font-black text-blue-600">
-                    {currentEmployee.annualDaysLastTwoYears}
+                    {currentEmployee.totalAnnualBalance}
                   </h3>
                   <p className="mt-2 text-sm text-slate-500">
                     jours consommés
@@ -463,7 +465,7 @@ export default function NewLeave() {
                     Congés Reconnaissance
                   </p>
                   <h3 className="mt-2 text-5xl font-black text-violet-600">
-                    {currentEmployee.exceptionalDaysOlder}
+                    {currentEmployee.recognitionBalance}
                   </h3>
                   <p className="mt-2 text-sm text-slate-500">
                     jours
@@ -550,7 +552,8 @@ export default function NewLeave() {
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none disabled:cursor-not-allowed"
                 >
                   <option value="annual">Congé annuel ordinaire</option>
-                  <option value="exceptional">Congé Reconissance</option>
+                  <option value="reconissance">Congé Reconissance</option>
+                  <option value="exceptionnel">congé exceptionnel</option>
                 </select>
               </div>
 
